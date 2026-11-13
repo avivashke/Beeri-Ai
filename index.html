@@ -1665,7 +1665,7 @@ function freshState(){
     xp:0, streak:0, lastDay:'', activeDays:{},
     daily:{date:todayKey(), xp:0, answers:0, reviews:0, chats:0},
     settings:{sound:true, ttsRate:.9, autoSpeak:false, showTr:true, fontScale:1, goal:60, correction:'balanced', level:'B1'},
-    api:{mode:'local', key:'', model:'glm-4.7-flash', endpoint:'https://api.z.ai/api/paas/v4/chat/completions', proxy:''},
+api:{mode:'proxy', key:'', model:'llama-3.3-70b-versatile', endpoint:'', proxy:'https://beerigroqai.avivashke95.workers.dev/'},
     prog:{}, words:{}, rules:{}, unitPos:{}, seen:{intro:{},units:{}},
     stats:{answers:0, correct:0, streak:0, bestStreak:0, reviews:0, chats:0, speak:0, speakScore:0, bySkill:{vocab:{a:0,c:0},grammar:{a:0,c:0},listening:{a:0,c:0}}},
     badges:{}, exam:{last:null, best:0, attempts:0, active:null},
@@ -1697,7 +1697,8 @@ function loadState(){
   }catch(e){ console.warn('load failed', e); }
   if(S.daily.date !== todayKey()) S.daily = {date:todayKey(), xp:0, answers:0, reviews:0, chats:0};
   if(S.review.lastDate !== todayKey()){ S.review.lastDate = todayKey(); S.review.doneToday = 0; }
-  if(S.lastDay && S.lastDay !== todayKey() && S.lastDay !== dateKey(Date.now()-DAY)) S.streak = 0;
+S.api = {mode:'proxy', key:'', model:'openai/gpt-oss-120b', endpoint:'', proxy:'https://beerigroqai.avivashke95.workers.dev/'};  
+if(S.lastDay && S.lastDay !== todayKey() && S.lastDay !== dateKey(Date.now()-DAY)) S.streak = 0;
   applyFontScale();
 }
 function saveNow(){
@@ -2906,41 +2907,20 @@ function openSettings(){
     <div class="field"><label>תרגום אוטומטי בשיחה</label><label class="radio-opt"><input type="checkbox" id="set-tr" ${S.settings.showTr?'checked':''}> <span><b>הצג תרגום לעברית</b><span>אפשר להסתיר בכל הודעה בנפרד</span></span></label></div>
     <div class="field"><label class="radio-opt"><input type="checkbox" id="set-autospeak" ${S.settings.autoSpeak?'checked':''}> <span><b>הקראה אוטומטית של תשובות המאמן</b><span>המאמן יקריא כל תשובה באנגלית</span></span></label></div>
     <div class="divider"></div>
-    <h3 style="font-size:1rem">🤖 חיבור המאמן (ZAI)</h3>
-    <p class="small muted">בחר מצב. במצב מקומי המאמן עובד בלי אינטרנט; במצב ZAI השיחה חופשית באמת.</p>
-    <div class="radio-row" style="margin-top:8px">
-      <label class="radio-opt"><input type="radio" name="api-mode" value="local" ${a.mode==='local'?'checked':''}><span><b>מאמן מקומי (בלי מפתח)</b><span>תרגול לפי תרחישים + תיקון טעויות נפוצות. עובד תמיד.</span></span></label>
-      <label class="radio-opt"><input type="radio" name="api-mode" value="proxy" ${a.mode==='proxy'?'checked':''}><span><b>ZAI דרך Proxy (מומלץ – גם לדפדפן)</b><span>דף סטטי לא יכול להסתיר מפתח, ו-ZAI חוסם בקשות דפדפן בגלל CORS. Worker קטן פותר את שניהם. הדבק כאן את כתובת ה-Worker.</span></span></label>
-      <label class="radio-opt"><input type="radio" name="api-mode" value="direct" ${a.mode==='direct'?'checked':''}><span><b>ZAI ישיר — מפתח בדפדפן (ניסיוני)</b><span>עלול להיחסם על ידי הדפדפן (CORS). מתאים רק לבדיקה מקומית – המפתח גלוי לכל מי שפותח את הדף.</span></span></label>
-    </div>
-    <div class="field"><label>מפתח ZAI</label><input type="password" id="set-key" class="ltr" placeholder="הדבק כאן את המפתח (לא נכלל בגיבוי)" value="${escA(a.key||'')}" autocomplete="off"><div class="help">משיגים ב-z.ai/manage-apikey/apikey-list. באתר ציבורי עדיף Proxy – אחרת כל מי שפותח את הדף יכול לראות את המפתח.</div></div>
-    <div class="grid two">
-      <div class="field"><label>מודל</label><input id="set-model" class="ltr" list="model-list" value="${escA(a.model||'glm-4.7-flash')}"><datalist id="model-list"><option value="glm-4.7-flash"><option value="glm-4.5-flash"><option value="glm-4.6"><option value="glm-4.7"></datalist><div class="help">glm-4.7-flash הוא חינמי (נכון ל-2026).</div></div>
-      <div class="field"><label>כתובת Proxy</label><input id="set-proxy" class="ltr" placeholder="https://your-worker.workers.dev/chat" value="${escA(a.proxy||'')}"></div>
-    </div>
-    <div class="field"><label>Endpoint (מצב ישיר)</label><input id="set-endpoint" class="ltr" value="${escA(a.endpoint||'https://api.z.ai/api/paas/v4/chat/completions')}"></div>
-    <div class="row" style="margin-top:12px"><button class="btn sm cyan" data-act="test-api">🔌 בדוק חיבור</button><button class="btn sm ghost" data-act="guide">📖 מדריך ZAI</button></div>
-    <div id="api-status"></div>
+
     <div class="divider"></div>
     <div class="row"><button class="btn primary" data-act="save-settings" style="flex:1">שמור הגדרות</button><button class="btn ghost" data-close>סגור</button></div>
     <div class="row" style="margin-top:10px"><button class="btn sm ghost" data-act="export">⬇️ ייצוא גיבוי</button><button class="btn sm ghost" data-act="import-file">⬆️ ייבוא</button><button class="btn sm ghost" data-act="backup-link">🔗 קישור המשך</button></div>
     <div class="row" style="margin-top:10px"><button class="btn sm danger" data-act="reset-all">🔄 איפוס כל ההתקדמות</button></div>`);
 }
 function readSettings(){
-  const mode=(document.querySelector('input[name="api-mode"]:checked')||{}).value||'local';
   S.settings.goal=clamp(Number($('#set-goal').value)||60,10,300);
   S.settings.fontScale=Number($('#set-fs').value)||1;
   S.settings.ttsRate=Number($('#set-rate').value)||.9;
   S.settings.sound=$('#set-sound').checked;
   S.settings.showTr=$('#set-tr').checked;
   S.settings.autoSpeak=$('#set-autospeak').checked;
-  S.api.mode=mode;
-  S.api.key=$('#set-key').value.trim();
-  S.api.model=($('#set-model').value||'glm-4.7-flash').trim();
-  S.api.proxy=$('#set-proxy').value.trim();
-  S.api.endpoint=($('#set-endpoint').value||'https://api.z.ai/api/paas/v4/chat/completions').trim();
   applyFontScale(); saveNow(); closeModal(); toast('ההגדרות נשמרו ✓');
-  if(mode==='direct' && !S.api.key) toast('שים לב: במצב ישיר צריך מפתח ZAI');
   if(location.hash.includes('/chat')) render();
 }
 function openGuide(){
@@ -3183,10 +3163,7 @@ function canUseAI(){
   if(a.mode==='proxy') return !!a.proxy;
   return false;
 }
-function aiModeLabel(){
-  if(!canUseAI()) return 'מאמן מקומי';
-  return S.api.mode==='proxy'?'ZAI דרך Proxy':'ZAI ישיר';
-}
+function aiModeLabel(){ return 'מאמן AI אישי'; }
 function scenarioById(id){ return SCENARIOS.find(s=>s.id===id); }
 
 /* ================= gallery ================= */
@@ -3215,7 +3192,7 @@ function chatGalleryHTML(){
     <div class="card" style="background:linear-gradient(135deg,rgba(198,242,78,.09),rgba(61,220,245,.05));border-color:rgba(198,242,78,.25)">
       <div class="row">
         <div class="avatar">🤖</div>
-        <div style="flex:1"><b style="font-size:.95rem">${aiModeLabel()}</b><div class="tiny muted">${canUseAI()?`מודל: ${esc(S.api.model)} · רמה ${S.settings.level}`:'עובד גם בלי אינטרנט. חבר ZAI לשיחה חופשית באמת.'}</div></div>
+    <div style="flex:1"><b style="font-size:.95rem">${aiModeLabel()}</b><div class="tiny muted">רמה ${S.settings.level}</div></div>
         <button class="btn xs ghost" data-act="settings">הגדרות</button>
       </div>
       ${canUseAI()?'':`<div class="row" style="margin-top:10px"><button class="btn sm primary" data-act="settings">🔌 חבר ZAI</button><span class="tiny muted">המאמן המקומי מלמד, אבל לא מבין כל משפט.</span></div>`}
@@ -3487,7 +3464,7 @@ async function callZAI(messages,opts={}){
     if(!a.key) throw Object.assign(new Error('no key'),{apiCode:401});
     headers.Authorization='Bearer '+a.key;
   }
-  const body={model:a.model||'glm-4.7-flash',messages,temperature:.72,max_tokens:opts.maxTokens||800};
+  const body={model:a.model||'openai/gpt-oss-120b',messages,temperature:.72,max_tokens:opts.maxTokens||800};
   const ctrl=new AbortController();
   const timer=setTimeout(()=>ctrl.abort(),opts.timeout||45000);
   let res;
